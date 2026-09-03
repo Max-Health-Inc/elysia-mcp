@@ -7,6 +7,14 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Stated rather than inherited: a reusable workflow cannot hold MORE permission than its
+# caller, and a repository whose default is `read` then fails at STARTUP with no log. This
+# repository's default happens to be `write`, but a default is not a contract.
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+
 jobs:
   publish:
     uses: max-network/.github/.github/workflows/publish-package.yml@main
