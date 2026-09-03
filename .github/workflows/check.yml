@@ -1,0 +1,16 @@
+name: Check
+
+# The org's shared gate, called rather than copied.
+on:
+  pull_request:
+  workflow_call:
+
+jobs:
+  check:
+    uses: max-network/.github/.github/workflows/check.yml@main
+    with:
+      lint: bun run lint
+      typecheck: bun run typecheck
+      test: bun run test
+      build: bun run build
+    secrets: inherit

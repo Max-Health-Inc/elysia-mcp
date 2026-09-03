@@ -1,0 +1,19 @@
+name: Publish
+
+# Releasing = bumping the version in your PR. A merge whose version is already on the
+# registry publishes nothing and says so in the run summary.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  publish:
+    uses: max-network/.github/.github/workflows/publish-package.yml@main
+    with:
+      registry: https://registry.npmjs.org
+      lint: bun run lint
+      typecheck: bun run typecheck
+      test: bun run test
+      build: bun run build
+    secrets: inherit

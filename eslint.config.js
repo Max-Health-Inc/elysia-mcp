@@ -1,19 +1,33 @@
+// SPDX-FileCopyrightText: Max Health Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 /**
- * @proxy-smart/elysia-mcp ESLint config — extends the shared Node base config.
+ * Self-contained on purpose.
  *
- * Previously absent, which made `eslint .` fail with "all files ignored"
- * (no flat config resolved for the package). This wires the package into the
- * shared `@proxy-smart/eslint-config` base like every other workspace package.
+ * In the monorepo this imported `../../config/eslint/base.js`. That path does not exist
+ * outside it, and `@proxy-smart/eslint-config` is `private: true` and unpublished — a
+ * public repository's dev dependencies have to install without a token. The rules below
+ * are the ones that base config actually enforced, not a stricter set: a rule added
+ * during an extraction shows up as a source change nobody asked for.
  */
-import { defineConfig } from 'eslint/config'
-import { baseConfig } from '../../config/eslint/base.js'
-import path from 'path'
-import { fileURLToPath } from 'url'
+import js from '@eslint/js'
+import tseslint from 'typescript-eslint'
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-
-export default defineConfig(
-  ...baseConfig({
-    tsconfigRootDir: __dirname,
-  }),
+export default tseslint.config(
+  { ignores: ['dist/**'] },
+  js.configs.recommended,
+  ...tseslint.configs.recommended,
+  {
+    rules: {
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_', destructuredArrayIgnorePattern: '^_' },
+      ],
+      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/consistent-type-imports': [
+        'error',
+        { prefer: 'type-imports', fixStyle: 'inline-type-imports', disallowTypeAnnotations: false },
+      ],
+    },
+  },
 )

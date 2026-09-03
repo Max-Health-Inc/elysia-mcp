@@ -1,5 +1,5 @@
 /**
- * @proxy-smart/elysia-mcp - Middleware Bypass Security Tests (TDD)
+ * @max-network/elysia-mcp - Middleware Bypass Security Tests (TDD)
  *
  * The executor historically ran route handlers by building a SYNTHETIC Elysia
  * context and calling `meta.handler(ctx)` directly. That bypasses the real

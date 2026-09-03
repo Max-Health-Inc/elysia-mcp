@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: Max Health Inc.
-// SPDX-License-Identifier: AGPL-3.0-or-later OR LicenseRef-Commercial
+// SPDX-License-Identifier: Apache-2.0
 
 /**
- * @proxy-smart/elysia-mcp
+ * @max-network/elysia-mcp
  *
  * Derives MCP tools and resources from an Elysia app's route table, and executes
  * them back through that app. The HTTP edge is not here: hosts serve MCP with

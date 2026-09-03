@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: Max Health Inc.
-// SPDX-License-Identifier: AGPL-3.0-or-later OR LicenseRef-Commercial
+// SPDX-License-Identifier: Apache-2.0
 
 /**
- * @proxy-smart/elysia-mcp/prefab - Schema-derived UIs for generated tools
+ * @max-network/elysia-mcp/prefab - Schema-derived UIs for generated tools
  *
  * Every tool this package generates already carries what a UI needs: the route
  * declares its shape and the executor has the payload in hand. This turns that
@@ -14,12 +14,12 @@
  * face come from one declaration, so they cannot drift.
  *
  * prefab is an OPTIONAL peer: importing this module is the opt-in. Nothing in
- * `@proxy-smart/elysia-mcp` itself reaches for it, so a server that serves
+ * `@max-network/elysia-mcp` itself reaches for it, so a server that serves
  * JSON and nothing else never installs it.
  *
  * @example
  * ```ts
- * import { prefabView } from '@proxy-smart/elysia-mcp/prefab'
+ * import { prefabView } from '@max-network/elysia-mcp/prefab'
  * import { registerViewerResource, PREFAB_RESOURCE_URI } from '@maxhealth.tech/prefab'
  *
  * registerViewerResource(server)

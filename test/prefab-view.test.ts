@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: Max Health Inc.
-// SPDX-License-Identifier: AGPL-3.0-or-later OR LicenseRef-Commercial
+// SPDX-License-Identifier: Apache-2.0
 
 /**
  * The prefab view — which payload shape becomes which UI.

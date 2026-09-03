@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: Max Health Inc.
-// SPDX-License-Identifier: AGPL-3.0-or-later OR LicenseRef-Commercial
+// SPDX-License-Identifier: Apache-2.0
 
 /**
- * @proxy-smart/elysia-mcp - Core Types
+ * @max-network/elysia-mcp - Core Types
  *
  * Type definitions for the Elysia-to-MCP bridge.
  */

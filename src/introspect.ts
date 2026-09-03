@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: Max Health Inc.
-// SPDX-License-Identifier: AGPL-3.0-or-later OR LicenseRef-Commercial
+// SPDX-License-Identifier: Apache-2.0
 
 /**
- * @proxy-smart/elysia-mcp - Route Introspection
+ * @max-network/elysia-mcp - Route Introspection
  *
  * Extracts route metadata from an Elysia app instance by reading its internal
  * route table. Produces tool and resource metadata for MCP registration.
