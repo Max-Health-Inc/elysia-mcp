@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * @max-network/elysia-mcp - Tool & Resource Execution
+ * @maxhealth.tech/elysia-mcp - Tool & Resource Execution
  *
  * Execution dispatches the tool/resource through the app's own HTTP pipeline:
  * a `Request` is reconstructed from the route metadata + args + token and handed
@@ -63,7 +63,7 @@ export interface ToolViewContext {
  * Return undefined for anything this view does not want to render; the payload
  * is then passed through untouched.
  *
- * @see `@max-network/elysia-mcp/prefab` for a ready-made implementation.
+ * @see `@maxhealth.tech/elysia-mcp/prefab` for a ready-made implementation.
  */
 export type ToolView = (
   payload: StructuredContent,

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * @max-network/elysia-mcp - Route Introspection
+ * @maxhealth.tech/elysia-mcp - Route Introspection
  *
  * Extracts route metadata from an Elysia app instance by reading its internal
  * route table. Produces tool and resource metadata for MCP registration.

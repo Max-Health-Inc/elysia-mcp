@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * @max-network/elysia-mcp - Tests
+ * @maxhealth.tech/elysia-mcp - Tests
  *
  * Unit tests for route introspection, TypeBox-to-Zod bridge, and tool execution.
  */

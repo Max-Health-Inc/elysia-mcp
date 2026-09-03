@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * @max-network/elysia-mcp - Tool text encoding
+ * @maxhealth.tech/elysia-mcp - Tool text encoding
  *
  * Chooses the encoding for a tool result's `content[].text` block, the part a
  * client feeds to the model. `structuredContent` is unaffected and stays JSON:

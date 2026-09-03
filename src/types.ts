@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * @max-network/elysia-mcp - Core Types
+ * @maxhealth.tech/elysia-mcp - Core Types
  *
  * Type definitions for the Elysia-to-MCP bridge.
  */

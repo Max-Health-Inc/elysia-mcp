@@ -11,9 +11,10 @@ jobs:
   publish:
     uses: max-network/.github/.github/workflows/publish-package.yml@main
     with:
+      runtime: bun
+      # The existing @maxhealth.tech scope, beside the mcp-http package this one names
+      # as its HTTP edge. No new npm org.
+      scope: '@maxhealth.tech'
       registry: https://registry.npmjs.org
-      lint: bun run lint
-      typecheck: bun run typecheck
-      test: bun run test
-      build: bun run build
+      check-steps: lint typecheck test build
     secrets: inherit

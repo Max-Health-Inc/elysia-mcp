@@ -1,4 +1,4 @@
-# @max-network/elysia-mcp
+# @maxhealth.tech/elysia-mcp
 
 Derives MCP tools and resources from an Elysia app's route table, and executes them back through that app.
 
@@ -39,18 +39,18 @@ Inside this repository it is a workspace package:
 
 ```jsonc
 // backend/package.json
-"@max-network/elysia-mcp": "workspace:*"
+"@maxhealth.tech/elysia-mcp": "workspace:*"
 ```
 
 It is published to GitHub Packages rather than public npm, so an external consumer needs the registry
 configured for the `@max-health-inc` scope:
 
 ```bash
-bun add @max-network/elysia-mcp
+bun add @maxhealth.tech/elysia-mcp
 ```
 
 ```ts
-import { extractRouteTools, executeTool } from '@max-network/elysia-mcp'
+import { extractRouteTools, executeTool } from '@maxhealth.tech/elysia-mcp'
 
 const tools = extractRouteTools(app, { prefixes: ['/admin/'] })
 const meta = tools.get('create_admin_users')
@@ -158,10 +158,10 @@ One thing does have to change per tool: a tool whose `structuredContent` carries
 
 ### The prefab view
 
-`@max-network/elysia-mcp/prefab` is a ready-made implementation built on [`@maxhealth.tech/prefab`](https://www.npmjs.com/package/@maxhealth.tech/prefab), an **optional** peer — importing that subpath is the opt-in, and a server that serves JSON never installs it.
+`@maxhealth.tech/elysia-mcp/prefab` is a ready-made implementation built on [`@maxhealth.tech/prefab`](https://www.npmjs.com/package/@maxhealth.tech/prefab), an **optional** peer — importing that subpath is the opt-in, and a server that serves JSON never installs it.
 
 ```ts
-import { prefabView, uiToolMeta } from '@max-network/elysia-mcp/prefab'
+import { prefabView, uiToolMeta } from '@maxhealth.tech/elysia-mcp/prefab'
 import { registerViewerResource } from '@maxhealth.tech/prefab'
 
 registerViewerResource(server, { themeBridge: 'vscode' })
