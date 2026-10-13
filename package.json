@@ -17,11 +17,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/max-network/elysia-mcp.git"
+    "url": "git+https://github.com/Max-Health-Inc/elysia-mcp.git"
   },
-  "homepage": "https://github.com/max-network/elysia-mcp#readme",
+  "homepage": "https://github.com/Max-Health-Inc/elysia-mcp#readme",
   "bugs": {
-    "url": "https://github.com/max-network/elysia-mcp/issues"
+    "url": "https://github.com/Max-Health-Inc/elysia-mcp/issues"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org",
