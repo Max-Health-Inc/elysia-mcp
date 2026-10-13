@@ -24,5 +24,5 @@ jobs:
       # as its HTTP edge. No new npm org.
       scope: '@maxhealth.tech'
       registry: https://registry.npmjs.org
-      check-steps: lint typecheck test build
+      check-steps: lint typecheck test build smoke
     secrets: inherit

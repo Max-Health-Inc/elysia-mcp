@@ -9,7 +9,7 @@
  */
 
 import type { TSchema } from '@sinclair/typebox'
-import type { ToolMetadata, ResourceMetadata, ToolAnnotations } from './types'
+import type { ToolMetadata, ResourceMetadata, ToolAnnotations } from './types.js'
 
 // ── Configuration ────────────────────────────────────────────────────────────
 
@@ -284,6 +284,18 @@ export function uniqueToolName(candidate: string, path: string, method: string, 
   const suffix = `_${digest(`${method} ${path}`)}`
   const base = candidate.slice(0, MAX_TOOL_NAME_LENGTH - suffix.length)
   return `${base}${suffix}`
+}
+
+const ACTION_PHRASES: Record<string, string> = {
+  get: 'Get',
+  create: 'Create a new',
+  update: 'Update an existing',
+  delete: 'Delete an existing',
+}
+
+export function describeTool(toolName: string, meta: Pick<ToolMetadata, 'public'>): string {
+  const [action, ...resource] = toolName.split('_')
+  return `${ACTION_PHRASES[action] ?? action} ${resource.join(' ')}. ${meta.public ? '(Public)' : '(Admin only)'}`
 }
 
 /**

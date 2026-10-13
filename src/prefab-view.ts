@@ -38,9 +38,9 @@ import {
   type AutoFormField,
   type Component,
 } from '@maxhealth.tech/prefab'
-import type { ToolMetadata } from './types'
-import type { StructuredContent, ToolView, ToolViewContext } from './executor'
-import { getMergedInputSchema, typeboxToJsonSchema } from './typebox-schema'
+import type { ToolMetadata } from './types.js'
+import type { StructuredContent, ToolView, ToolViewContext } from './executor.js'
+import { getMergedInputSchema, typeboxToJsonSchema } from './typebox-schema.js'
 
 // ── Tool _meta ───────────────────────────────────────────────────────────────
 

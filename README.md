@@ -35,26 +35,18 @@ What it does implement of the v2 tool contract is `inputSchema` and `outputSchem
 
 ## Install
 
-Inside this repository it is a workspace package:
-
-```jsonc
-// backend/package.json
-"@maxhealth.tech/elysia-mcp": "workspace:*"
-```
-
-It is published to GitHub Packages rather than public npm, so an external consumer needs the registry
-configured for the `@max-health-inc` scope:
-
 ```bash
-bun add @maxhealth.tech/elysia-mcp
+bun add @maxhealth.tech/elysia-mcp elysia @sinclair/typebox @modelcontextprotocol/server
 ```
+
+The last three are peer dependencies, so the host picks their versions. The package is plain ESM and runs on Bun and on Node 20 or newer.
 
 ```ts
 import { extractRouteTools, executeTool } from '@maxhealth.tech/elysia-mcp'
 
 const tools = extractRouteTools(app, { prefixes: ['/admin/'] })
 const meta = tools.get('create_admin_users')
-await executeTool('create_admin_users', meta, args, token, decorators)
+await executeTool('create_admin_users', meta, args, token, app)
 ```
 
 Subpath entries expose the pieces individually: `./introspect`, `./typebox-schema`, `./text-format`.
@@ -75,7 +67,7 @@ A route's declared success response becomes the tool's `responseSchema`, extract
 
 Advertising this is what makes `structuredContent` worth its bytes. Without an output schema the structured half is an untyped copy of the text block and a client has nothing to validate against; with one it is typed and checkable. It is safe to advertise precisely because Elysia coerces the response to the same schema inside the pipeline, so the body a tool call returns already conforms — which the spec requires of any result whose tool declares an output schema.
 
-Against this repo's own admin surface: 169 tools extracted, 164 carry a declared success schema, all 164 convert, and 19 of them are array-rooted.
+Against the [Proxy Smart](https://github.com/proxy-smart/proxy-smart) admin surface: 169 tools extracted, 164 carry a declared success schema, all 164 convert, and 19 of them are array-rooted.
 
 Both converters drop the `format` hints Elysia attaches to its coercion unions. `t.Integer()` compiles to `anyOf: [{ type: 'string', format: 'integer' }, { type: 'integer' }]` so a query string can carry a number, and Ajv — which the SDK compiles advertised schemas with — logs `unknown format "integer" ignored` for each one. Only `numeric`, `integer`, `boolean` and `ArrayString` are stripped, and only on the string branch; `date` and `date-time` are genuine formats and pass through. Ajv ignores an unknown format anyway, so this removes noise without changing what a schema accepts.
 
@@ -103,6 +95,8 @@ between deploys breaks prompts clients have already saved.
 generating the same name. It returns the candidate untouched when it is free, and otherwise appends a
 digest of `METHOD path`, trimming the base so the result still fits the cap. Without it the second
 route would silently overwrite the first in the registry.
+
+`describeTool(toolName, meta)` turns a generated name back into a one-line description for routes that declare none: `create_admin_roles` becomes *Create a new admin roles. (Admin only)*, with *(Public)* instead when the route's `meta.public` is set.
 
 `pathToResourceName(path)` is different in two ways, because a resource name reads as a noun rather than an action: parameters become `by_<name>` and hyphens become underscores. `/admin/roles/:roleName` yields `admin_roles_by_roleName`.
 
@@ -166,7 +160,7 @@ import { registerViewerResource } from '@maxhealth.tech/prefab'
 
 registerViewerResource(server, { themeBridge: 'vscode' })
 server.registerTool(name, { description, inputSchema, _meta: uiToolMeta() }, (args) =>
-  executeTool(name, meta, args, token, decorators, { view: prefabView() }))
+  executeTool(name, meta, args, token, app, { view: prefabView() }))
 ```
 
 `prefabView()` renders a list of records as a searchable table and a single record as a detail card. A list-shaped envelope holding exactly one array (`{ items: [...], total: 42 }`) is unwrapped; one holding two is left as a record, because picking which array is *the* table would be a guess. Anything else — a scalar, an empty body — renders nothing and keeps its JSON. That behaviour is `defaultView(payload, context, options?)`, exported so a custom view can fall back to it explicitly.
@@ -216,5 +210,6 @@ Streamable HTTP has a header contract a host's CORS layer has to honour, and get
 
 ## Related
 
-- [MCP HTTP Server](https://max-health-inc.github.io/proxy-smart/MCP_HTTP_SERVER) documents the transport and client setup.
-- [Backend API Tools](https://max-health-inc.github.io/proxy-smart/BACKEND_API_TOOLS) covers how the proxy-smart backend wires this package up.
+- [`@maxhealth.tech/mcp-http`](https://www.npmjs.com/package/@maxhealth.tech/mcp-http) is the HTTP edge that serves what this package derives.
+- [MCP HTTP Server](https://proxy-smart.github.io/proxy-smart/MCP_HTTP_SERVER) documents the transport and client setup.
+- [Backend API Tools](https://proxy-smart.github.io/proxy-smart/BACKEND_API_TOOLS) covers how the Proxy Smart backend wires this package up.

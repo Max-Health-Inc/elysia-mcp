@@ -22,7 +22,7 @@
 import { fromJsonSchema, type StandardSchemaWithJSON } from '@modelcontextprotocol/server'
 import type { TSchema, TProperties } from '@sinclair/typebox'
 import { Type } from '@sinclair/typebox'
-import type { ToolMetadata } from './types'
+import type { ToolMetadata } from './types.js'
 
 /**
  * `format` values Elysia emits as coercion hints rather than as JSON Schema

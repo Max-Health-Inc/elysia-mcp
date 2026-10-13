@@ -12,5 +12,5 @@ jobs:
       # bun, because the suite imports `bun:test` — Elysia is bun-first. The library's
       # own source uses no bun globals, so the published package still suits node.
       runtime: bun
-      steps: lint typecheck test build
+      steps: lint typecheck test build smoke
     secrets: inherit

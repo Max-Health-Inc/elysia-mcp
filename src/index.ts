@@ -18,7 +18,7 @@
 
 // ── Re-exports ───────────────────────────────────────────────────────────────
 
-export type { ToolMetadata, ToolAnnotations, ResourceMetadata } from './types'
+export type { ToolMetadata, ToolAnnotations, ResourceMetadata } from './types.js'
 
 export {
   extractRouteTools,
@@ -27,19 +27,20 @@ export {
   annotationsForMethod,
   pathToToolName,
   uniqueToolName,
+  describeTool,
   MAX_TOOL_NAME_LENGTH,
   pathToResourceName,
   pathToResourceUri,
-} from './introspect'
+} from './introspect.js'
 
-export type { IntrospectOptions } from './introspect'
+export type { IntrospectOptions } from './introspect.js'
 
 export {
   typeboxToSchema,
   typeboxToOutputSchema,
   typeboxToJsonSchema,
   getMergedInputSchema,
-} from './typebox-schema'
+} from './typebox-schema.js'
 
 export {
   executeTool,
@@ -51,8 +52,8 @@ export {
   type StructuredContent,
   type ToolView,
   type ToolViewContext,
-} from './executor'
+} from './executor.js'
 
-export { chooseToolText, type ToolTextFormat } from './text-format'
+export { chooseToolText, type ToolTextFormat } from './text-format.js'
 
-export { MCP_REQUEST_HEADERS, MCP_EXPOSED_RESPONSE_HEADERS } from './headers'
+export { MCP_REQUEST_HEADERS, MCP_EXPOSED_RESPONSE_HEADERS } from './headers.js'
