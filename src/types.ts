@@ -56,6 +56,8 @@ export interface ToolMetadata {
    * output schema.
    */
   responseSchema?: TSchema
+  title?: string
+  description?: string
   /** Whether tool requires no authentication */
   public?: boolean
   /** Whether tool is read-only (GET route) */
@@ -74,6 +76,8 @@ export interface ResourceMetadata {
   handler: unknown
   /** Path params schema (TypeBox) */
   paramsSchema?: TSchema
+  title?: string
+  description?: string
   /** Whether resource requires no authentication */
   public?: boolean
   /** Path param names extracted from route (e.g. ['userId', 'roleName']) */

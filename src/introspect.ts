@@ -10,6 +10,8 @@
 
 import type { TSchema } from '@sinclair/typebox'
 import type { ToolMetadata, ResourceMetadata, ToolAnnotations } from './types.js'
+import { isRecord, nonEmptyText } from './guards.js'
+import { readMcpOption, routeConfig, isRouteSelected, type McpRouteConfig, type McpRouteOption } from './route-option.js'
 
 // ── Configuration ────────────────────────────────────────────────────────────
 
@@ -75,47 +77,102 @@ export function extractResponseSchema(response: unknown): TSchema | undefined {
 
 // ── Route extraction ─────────────────────────────────────────────────────────
 
-/**
- * Extract mutation and query routes from an Elysia app as MCP tool metadata.
- *
- * Reads Elysia's internal `routes` array and pulls path, method, body/query/params
- * schemas, handler references, and public/readOnly annotations.
- */
+const DEFAULT_PREFIXES = ['/admin/', '/api/']
+const UNCALLABLE_METHODS = new Set(['HEAD', 'OPTIONS', 'ALL'])
+
+interface RouteRecord {
+  path: string
+  method: string
+  handler: unknown
+  body?: TSchema
+  params?: TSchema
+  query?: TSchema
+  response: unknown
+  option: McpRouteOption | undefined
+  config: McpRouteConfig
+  title?: string
+  description?: string
+  operationId?: string
+  hidden: boolean
+  public: boolean
+}
+
+function isSchema(value: unknown): value is TSchema {
+  return isRecord(value)
+}
+
+function readRoute(route: unknown): RouteRecord | undefined {
+  if (!isRecord(route)) return undefined
+  const { path, method, handler } = route
+  if (typeof path !== 'string' || typeof method !== 'string') return undefined
+
+  const hooks = isRecord(route.hooks) ? route.hooks : {}
+  const legacy = isRecord(route.schema) ? route.schema : {}
+  const detail = isRecord(hooks.detail) ? hooks.detail : {}
+  const meta = isRecord(route.meta) ? route.meta : {}
+  const schema = (key: string) => {
+    const value = hooks[key] ?? legacy[key]
+    return isSchema(value) ? value : undefined
+  }
+  const option = readMcpOption(hooks.mcp)
+  const config = routeConfig(option)
+  const summary = nonEmptyText(detail.summary)
+
+  return {
+    path,
+    method,
+    handler,
+    body: schema('body'),
+    params: schema('params'),
+    query: schema('query'),
+    response: hooks.response ?? legacy.response,
+    option,
+    config,
+    title: config.title ?? summary,
+    description: config.description ?? nonEmptyText(detail.description) ?? summary,
+    operationId: nonEmptyText(detail.operationId),
+    hidden: detail.hide === true,
+    public: config.public ?? meta.public === true,
+  }
+}
+
+function selectedRoutes(app: unknown, prefixes: readonly string[]): RouteRecord[] {
+  const routes = isRecord(app) && Array.isArray(app.routes) ? app.routes : []
+  return routes
+    .map(readRoute)
+    .filter((route): route is RouteRecord =>
+      route !== undefined &&
+      !(route.hidden && route.option === undefined) &&
+      isRouteSelected(route.option, route.path, prefixes))
+}
+
+function fitToolName(name: string): string {
+  return name.length <= MAX_TOOL_NAME_LENGTH ? name : truncateWithDigest(name)
+}
+
 export function extractRouteTools(app: unknown, options?: IntrospectOptions): Map<string, ToolMetadata> {
   const tools = new Map<string, ToolMetadata>()
-  const prefixes = options?.prefixes ?? ['/admin/', '/api/']
   const nameGen = options?.toolNameGenerator ?? pathToToolName
 
-  const routes: unknown[] = (app as { routes?: unknown[] }).routes ?? []
-
-  for (const route of routes) {
-    const path = (route as { path?: unknown }).path
-    const method = (route as { method?: unknown }).method
-    const hooks = (route as { hooks?: { body?: TSchema; params?: TSchema; query?: TSchema; response?: unknown } }).hooks
-    const legacySchema = (route as { schema?: { body?: TSchema; params?: TSchema; query?: TSchema; response?: unknown } }).schema
-    const handler = (route as { handler?: unknown }).handler
-    const meta = (route as { meta?: { public?: boolean } }).meta
-
-    if (typeof path !== 'string' || typeof method !== 'string') continue
-    if (!prefixes.some(prefix => path.startsWith(prefix))) continue
-    if (method === 'HEAD' || method === 'OPTIONS') continue
-
-    const bodySchema = hooks?.body ?? legacySchema?.body
-    const paramsSchema = hooks?.params ?? legacySchema?.params
-    const querySchema = hooks?.query ?? legacySchema?.query
-    const responseSchema = extractResponseSchema(hooks?.response ?? legacySchema?.response)
+  for (const route of selectedRoutes(app, options?.prefixes ?? DEFAULT_PREFIXES)) {
+    const { path, method } = route
+    if (UNCALLABLE_METHODS.has(method)) continue
 
     const isGet = method === 'GET'
-    const toolName = uniqueToolName(nameGen(path, method), path, method, new Set(tools.keys()))
+    const declared = route.config.name ?? route.operationId
+    const candidate = declared ? fitToolName(declared) : nameGen(path, method)
+    const toolName = uniqueToolName(candidate, path, method, new Set(tools.keys()))
 
     tools.set(toolName, {
       path,
       method,
-      handler,
-      schema: isGet ? querySchema : bodySchema,
-      paramsSchema,
-      responseSchema,
-      public: meta?.public ?? false,
+      handler: route.handler,
+      schema: isGet ? route.query : route.body,
+      paramsSchema: route.params,
+      responseSchema: extractResponseSchema(route.response),
+      title: route.title,
+      description: route.description,
+      public: route.public,
       readOnly: isGet,
       annotations: annotationsForMethod(method),
     })
@@ -160,34 +217,23 @@ export function annotationsForMethod(method: string): ToolAnnotations {
  */
 export function extractRouteResources(app: unknown, options?: IntrospectOptions): Map<string, ResourceMetadata> {
   const resources = new Map<string, ResourceMetadata>()
-  const prefixes = options?.prefixes ?? ['/admin/', '/api/']
   const nameGen = options?.resourceNameGenerator ?? pathToResourceName
 
-  const routes: unknown[] = (app as { routes?: unknown[] }).routes ?? []
-
-  for (const route of routes) {
-    const path = (route as { path?: unknown }).path
-    const method = (route as { method?: unknown }).method
-    const hooks = (route as { hooks?: { params?: TSchema } }).hooks
-    const legacySchema = (route as { schema?: { params?: TSchema } }).schema
-    const handler = (route as { handler?: unknown }).handler
-    const meta = (route as { meta?: { public?: boolean } }).meta
-
-    if (typeof path !== 'string' || typeof method !== 'string') continue
+  for (const route of selectedRoutes(app, options?.prefixes ?? DEFAULT_PREFIXES)) {
+    const { path, method } = route
     if (method !== 'GET') continue
-    if (!prefixes.some(prefix => path.startsWith(prefix))) continue
 
     const paramMatches = path.match(/:(\w+)/g)
     const pathParams = paramMatches ? paramMatches.map(p => p.slice(1)) : []
-    const resourceName = nameGen(path)
-    const paramsSchema = hooks?.params ?? legacySchema?.params
 
-    resources.set(resourceName, {
+    resources.set(nameGen(path), {
       path,
       method,
-      handler,
-      paramsSchema,
-      public: meta?.public ?? false,
+      handler: route.handler,
+      paramsSchema: route.params,
+      title: route.title,
+      description: route.description,
+      public: route.public,
       pathParams,
     })
   }
@@ -293,9 +339,18 @@ const ACTION_PHRASES: Record<string, string> = {
   delete: 'Delete an existing',
 }
 
-export function describeTool(toolName: string, meta: Pick<ToolMetadata, 'public'>): string {
+function audience(meta: { public?: boolean }): string {
+  return meta.public ? '(Public)' : '(Admin only)'
+}
+
+export function describeTool(toolName: string, meta: Pick<ToolMetadata, 'public' | 'description'>): string {
+  if (meta.description) return meta.description
   const [action, ...resource] = toolName.split('_')
-  return `${ACTION_PHRASES[action] ?? action} ${resource.join(' ')}. ${meta.public ? '(Public)' : '(Admin only)'}`
+  return `${ACTION_PHRASES[action] ?? action} ${resource.join(' ')}. ${audience(meta)}`
+}
+
+export function describeResource(resourceName: string, meta: Pick<ResourceMetadata, 'public' | 'description'>): string {
+  return meta.description ?? `Read ${resourceName.split('_').join(' ')}. ${audience(meta)}`
 }
 
 /**

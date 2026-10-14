@@ -67,7 +67,7 @@ export type ToolView = (
 ) => StructuredContent | undefined
 
 /** Minimal shape of an Elysia app we depend on for pipeline dispatch. */
-interface DispatchableApp {
+export interface DispatchableApp {
   handle(request: Request): Promise<Response> | Response
 }
 
@@ -216,6 +216,8 @@ async function dispatchThroughPipeline(
   return { status: response.status, text }
 }
 
+const DOT_SEGMENTS = new Set(['.', '..'])
+
 /**
  * Build the concrete request URL by interpolating path params and (for GET)
  * appending remaining args as query parameters. Returns the URL plus the args
@@ -229,6 +231,7 @@ function buildUrl(
   const pathParams = extractPathParams(path, args)
   let url = path
   for (const [name, value] of Object.entries(pathParams)) {
+    if (DOT_SEGMENTS.has(value)) throw new Error(`Path parameter "${name}" cannot be "${value}"`)
     url = url.replace(`:${name}`, encodeURIComponent(value))
   }
 

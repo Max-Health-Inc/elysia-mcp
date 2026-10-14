@@ -28,6 +28,7 @@ export {
   pathToToolName,
   uniqueToolName,
   describeTool,
+  describeResource,
   MAX_TOOL_NAME_LENGTH,
   pathToResourceName,
   pathToResourceUri,
@@ -52,8 +53,21 @@ export {
   type StructuredContent,
   type ToolView,
   type ToolViewContext,
+  type DispatchableApp,
 } from './executor.js'
 
 export { chooseToolText, type ToolTextFormat } from './text-format.js'
+
+export { mcp, type McpRouteConfig, type McpRouteOption } from './route-option.js'
+
+export {
+  toMcpServer,
+  registerRouteTools,
+  registerRouteResources,
+  bearerToken,
+  type ToMcpServerOptions,
+  type RouteToolsOptions,
+  type RouteResourcesOptions,
+} from './server.js'
 
 export { MCP_REQUEST_HEADERS, MCP_EXPOSED_RESPONSE_HEADERS } from './headers.js'

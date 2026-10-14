@@ -4,22 +4,11 @@ Derives MCP tools and resources from an Elysia app's route table, and executes t
 
 An admin API that already exists as typed Elysia routes is, structurally, already a tool catalog: each route has a name, an input schema, and a handler. This package reads that route table rather than asking you to declare the same thing twice. Routes stay the single source of truth, and a route added tomorrow is a tool tomorrow.
 
-The HTTP edge is deliberately not here. Hosts serve MCP with `@maxhealth.tech/mcp-http`, which tracks the protocol through the SDK; this package only bridges Elysia to it.
-
-## What this is not
-
-There are community Elysia MCP plugins on npm — `elysia-mcp` and `elysiajs-mcp` — and they solve the
-opposite half of the problem. They give you Streamable HTTP, sessions and resumability, and you hand
-them a tool catalog you wrote by hand (`setupServer(server)`, registering each tool). They have no
-notion of your route table.
-
-This package has no transport, no sessions and no plugin. It reads the routes you already have and
-produces the catalog. The two are stackable rather than competing: the output of `extractRouteTools`
-is what such a plugin's `setupServer` would otherwise be written out by hand.
+Transport stays with the SDK: `toMcpServer` plugs into its `createMcpHandler`, and [`@maxhealth.tech/mcp-http`](https://www.npmjs.com/package/@maxhealth.tech/mcp-http) adds OAuth discovery, token validation, CORS and observability in front of it.
 
 ## SDK and protocol version
 
-Requires the **v2** SDK — `@modelcontextprotocol/server` `>=2.0.0`, the split packaging that replaced
+Works with Elysia 1.2 and later, and introspection reads the same route table on the 2.0 beta. Requires the **v2** SDK — `@modelcontextprotocol/server` `>=2.0.0`, the split packaging that replaced
 the monolithic `@modelcontextprotocol/sdk`. That is a peer dependency, so the host chooses the exact
 version.
 
@@ -42,14 +31,59 @@ bun add @maxhealth.tech/elysia-mcp elysia @sinclair/typebox @modelcontextprotoco
 The last three are peer dependencies, so the host picks their versions. The package is plain ESM and runs on Bun and on Node 20 or newer.
 
 ```ts
-import { extractRouteTools, executeTool } from '@maxhealth.tech/elysia-mcp'
+import { Elysia, t } from 'elysia'
+import { createMcpHandler, hostHeaderValidationResponse, localhostAllowedHostnames } from '@modelcontextprotocol/server'
+import { mcp, toMcpServer, bearerToken } from '@maxhealth.tech/elysia-mcp'
 
-const tools = extractRouteTools(app, { prefixes: ['/admin/'] })
-const meta = tools.get('create_admin_users')
-await executeTool('create_admin_users', meta, args, token, app)
+const app = new Elysia()
+  .use(mcp())
+  .get('/admin/roles', () => listRoles(), {
+    detail: { summary: 'List roles', description: 'Every realm role.' },
+  })
+  .post('/admin/roles', ({ body }) => createRole(body), { body: t.Object({ name: t.String() }) })
+  .delete('/admin/roles/:roleName', ({ params }) => deleteRole(params.roleName), { mcp: false })
+
+const handler = createMcpHandler(({ requestInfo }) =>
+  toMcpServer(app, { authToken: bearerToken(requestInfo), serverInfo: { name: 'roles', version: '1.0.0' } }))
+
+app.all('/mcp', ({ request, body }) =>
+  hostHeaderValidationResponse(request, localhostAllowedHostnames()) ?? handler.fetch(request, { parsedBody: body }))
 ```
 
-Subpath entries expose the pieces individually: `./introspect`, `./typebox-schema`, `./text-format`.
+That serves `get_admin_roles` and `create_admin_roles` over Streamable HTTP; the delete route opted out. `createMcpHandler` does not check the `Host` header itself, so the route does, against DNS rebinding; list your public hostnames there instead of `localhostAllowedHostnames()` when you deploy. Elysia may already have read the body, which is why it is handed over as `parsedBody`. Each call runs through `app.handle()` with the caller's bearer token, so the app's own guards decide what it may do. A deployment that needs OAuth discovery and token validation at the edge puts [`@maxhealth.tech/mcp-http`](https://www.npmjs.com/package/@maxhealth.tech/mcp-http) in front instead of the bare handler.
+
+The lower-level pieces stay available for hosts that build their own registration: `extractRouteTools`, `executeTool` and the schema converters below. Subpath entries expose them individually: `./introspect`, `./typebox-schema`, `./text-format`.
+
+## Route option
+
+`.use(mcp())` adds an `mcp` option to every route of that app, typed, and Elysia deduplicates the plugin, so each sub-app that marks routes uses it too.
+
+| Option | Effect |
+| --- | --- |
+| `mcp: true` | Exposed, even outside `prefixes` |
+| `mcp: false` | Never exposed, even inside `prefixes` |
+| `mcp: { name, title, description, public }` | Exposed, with any of these overriding what is derived |
+
+Unmarked routes are still selected by `prefixes`, so an existing app keeps its catalog. Pass `prefixes: []` to expose only marked routes.
+
+A route documented for OpenAPI needs nothing extra. `detail.operationId` names the tool when there is no `mcp: { name }`, and a route with `detail.hide: true` stays out unless it is marked. Catch-all `.all()` routes are skipped, since a tool has to call one method. `detail.summary` becomes the tool's `title` and `detail.description` its description (the summary when there is no description). The `mcp` option wins over both. Only routes with neither fall back to the description generated from the name.
+
+## Serving
+
+`toMcpServer(app, options?)` returns an `McpServer` with the selected routes registered. Build one per request, as `createMcpHandler` does, so the token and the `filter` can differ per caller.
+
+`ToMcpServerOptions` carries:
+
+- everything in `IntrospectOptions` (`prefixes`, the name generators)
+- `authToken`, forwarded as `Authorization: Bearer` on every dispatch; `bearerToken(request)` reads it from the incoming request
+- `filter(toolName, meta)`, to hide tools per caller, for instance non-public ones from a caller without an admin role
+- `tools`, a map from a startup `extractRouteTools` call, so a request does not re-read the route table
+- `textFormat` and `view` (see [Text encoding](#text-encoding) and [Views](#views)); a server given a `view` advertises no `outputSchema`, since a view's result would not match it
+- `toolMeta`, attached as `_meta` to every tool, e.g. `uiToolMeta()`
+- `resources`: `true`, or `{ scheme, filter, resources }`, to register `GET` routes as MCP resources and URI templates as well
+- `serverInfo`, the name and version the server reports
+
+`registerRouteTools(server, app, options?)` and `registerRouteResources(server, app, options?)` do the same against a server you created, for hosts that register their own tools beside the generated ones. Both return the names they registered.
 
 ## Introspection
 
@@ -57,7 +91,7 @@ Subpath entries expose the pieces individually: `./introspect`, `./typebox-schem
 
 `extractRouteResources(app, options?)` returns a `Map<string, ResourceMetadata>` covering `GET` routes only. Static paths become fixed-URI resources and parameterized paths become URI templates, with the parameter names collected into `pathParams`.
 
-`IntrospectOptions` controls both. `prefixes` limits which routes are considered and defaults to `['/admin/', '/api/']`, so nothing is exposed merely by existing. `toolNameGenerator` and `resourceNameGenerator` override the naming functions below.
+`IntrospectOptions` controls both. `prefixes` limits which unmarked routes are considered and defaults to `['/admin/', '/api/']`, so nothing is exposed merely by existing; the [route option](#route-option) overrides it per route. `toolNameGenerator` and `resourceNameGenerator` override the naming functions below.
 
 ## Output schemas
 
@@ -96,7 +130,9 @@ generating the same name. It returns the candidate untouched when it is free, an
 digest of `METHOD path`, trimming the base so the result still fits the cap. Without it the second
 route would silently overwrite the first in the registry.
 
-`describeTool(toolName, meta)` turns a generated name back into a one-line description for routes that declare none: `create_admin_roles` becomes *Create a new admin roles. (Admin only)*, with *(Public)* instead when the route's `meta.public` is set.
+`describeTool(toolName, meta)` and `describeResource(resourceName, meta)` return the route's declared description, and otherwise turn the generated name back into a one-line one: `create_admin_roles` becomes *Create a new admin roles. (Admin only)*, with *(Public)* instead when the route is marked `mcp: { public: true }`.
+
+A name set through `mcp: { name }` replaces the generated one and is held to the same 64-character cap.
 
 `pathToResourceName(path)` is different in two ways, because a resource name reads as a noun rather than an action: parameters become `by_<name>` and hyphens become underscores. `/admin/roles/:roleName` yields `admin_roles_by_roleName`.
 
@@ -135,6 +171,8 @@ The app is a required argument, and there is no second way to run a route. An ea
 Handler context comes from the app itself: `decorate()` what a route needs, as you would for any Elysia route. The executor injects nothing.
 
 `executeResource` follows the same shape for resource reads.
+
+Path params are percent-encoded into their segment, and a value of `.` or `..` is refused before dispatch. The URL parser would otherwise resolve it into a different route: `userId: '..'` on `DELETE /admin/roles/:roleName/members/:userId` would reach `DELETE /admin/roles/:roleName`. Only `Authorization` is forwarded, never headers from tool arguments.
 
 Both accept an optional `ExecuteOptions` as their last argument, carrying `textFormat` and `view`.
 
