@@ -10,12 +10,8 @@
  * response-schema coercion, and `onAfterResponse` hooks such as audit logging.
  * Pass the ROOT app so global plugins and route prefixes resolve.
  *
- * There is deliberately NO synthetic-context fallback. Calling the handler
- * directly is what commit 3bc8d07ac was fixing: it skipped guards, response
- * schemas and audit logging, and it stayed reachable afterwards because the app
- * arrived through an OPTIONAL bag of decorators, so forgetting it silently
- * selected the unguarded path. The app is a required argument now, which is why
- * that class of mistake no longer type-checks.
+ * There is no direct-handler fallback: the app is a required argument, so the
+ * unguarded path cannot be selected by omission.
  */
 
 import { Value } from '@sinclair/typebox/value'
@@ -79,9 +75,7 @@ interface DispatchableApp {
 
 /**
  * Execute a tool (route handler) with the given arguments.
- *
- * Dispatches through the real Elysia pipeline when a `__app` decorator is
- * present; otherwise falls back to the synthetic-context invocation.
+ * Dispatches through the app's own pipeline via `app.handle()`.
  */
 export async function executeTool(
   toolName: string,
@@ -134,9 +128,7 @@ export interface ResourceResult {
 
 /**
  * Execute a GET route handler and return the serialized result.
- *
- * Dispatches through the real Elysia pipeline when a `__app` decorator is
- * present; otherwise falls back to the synthetic-context invocation.
+ * Dispatches through the app's own pipeline via `app.handle()`.
  */
 export async function executeResource(
   meta: ResourceMetadata,

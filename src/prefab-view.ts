@@ -24,7 +24,7 @@
  *
  * registerViewerResource(server)
  * server.registerTool(name, { description, inputSchema, _meta: uiToolMeta() }, (args) =>
- *   executeTool(name, meta, args, token, decorators, { view: prefabView() }))
+ *   executeTool(name, meta, args, token, app, { view: prefabView() }))
  * ```
  */
 

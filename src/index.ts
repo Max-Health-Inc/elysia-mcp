@@ -12,7 +12,7 @@
  * ```ts
  * const tools = extractRouteTools(app, { prefixes: ['/admin/'] })
  * const meta = tools.get('create_admin_users')
- * await executeTool('create_admin_users', meta, args, token, decorators)
+ * await executeTool('create_admin_users', meta, args, token, app)
  * ```
  */
 
