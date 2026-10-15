@@ -232,11 +232,7 @@ Length is compared in characters, not tokens. A tokenizer in the hot path is a h
 
 ## CORS
 
-Streamable HTTP has a header contract a host's CORS layer has to honour, and getting it wrong fails browser clients at preflight rather than at call time.
-
-`MCP_REQUEST_HEADERS` lists what belongs in `Access-Control-Allow-Headers`: `Mcp-Session-Id`, `Mcp-Protocol-Version`, `Mcp-Method`, `Mcp-Name`, and `Last-Event-ID`. `Mcp-Method` and `Mcp-Name` became required of clients in MCP 2026-07-28 so intermediaries can route without parsing the JSON-RPC body, which means every conformant browser client sends them and any server omitting them fails that client's preflight.
-
-`MCP_EXPOSED_RESPONSE_HEADERS` lists what belongs in `Access-Control-Expose-Headers`, which the allow-list does not grant. It is deliberately short: only `Mcp-Protocol-Version`. `Mcp-Session-Id` was here while the server was stateful and had to be echoed by the client; statelessly there is no session id to emit, so exposing it advertised a header that is never sent.
+The Streamable HTTP header contract a host's CORS layer has to honour lives in [`@maxhealth.tech/mcp-http`](https://github.com/Max-Health-Inc/mcp-http), which serves the HTTP edge. Import `MCP_REQUEST_HEADERS`, `MCP_EXPOSED_RESPONSE_HEADERS` and `MCP_PARAM_HEADER_PREFIX` from there. This package exported its own copy until 2.0.0; that copy had drifted from the spec and was removed.
 
 ## Types
 

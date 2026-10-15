@@ -70,4 +70,3 @@ export {
   type RouteResourcesOptions,
 } from './server.js'
 
-export { MCP_REQUEST_HEADERS, MCP_EXPOSED_RESPONSE_HEADERS } from './headers.js'
