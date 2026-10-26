@@ -5,7 +5,7 @@ import { McpServer, ResourceTemplate } from '@modelcontextprotocol/server'
 import { extractRouteTools, extractRouteResources, describeTool, describeResource, pathToResourceUri, type IntrospectOptions } from './introspect.js'
 import { executeTool, executeResource, type DispatchableApp, type ExecuteOptions } from './executor.js'
 import { getMergedInputSchema, typeboxToSchema, typeboxToOutputSchema } from './typebox-schema.js'
-import { isArgs } from './guards.js'
+import { isRecord } from './guards.js'
 import type { ToolMetadata, ResourceMetadata } from './types.js'
 
 export interface RouteToolsOptions extends IntrospectOptions, ExecuteOptions {
@@ -48,7 +48,7 @@ export function registerRouteTools(server: McpServer, app: DispatchableApp, opti
       ...(options.toolMeta ? { _meta: options.toolMeta } : {}),
     }
     const run = (args: unknown) =>
-      executeTool(name, meta, isArgs(args) ? args : {}, options.authToken, app, execute)
+      executeTool(name, meta, isRecord(args) ? args : {}, options.authToken, app, execute)
 
     if (inputSchema) server.registerTool(name, { ...config, inputSchema }, run)
     else server.registerTool(name, config, () => run({}))

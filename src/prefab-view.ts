@@ -237,6 +237,7 @@ export function prefabView(options?: PrefabViewOptions): ToolView {
     const app = built instanceof PrefabApp
       ? built
       : new PrefabApp({ title: titleFromToolName(context.toolName), view: built })
-    return app.toJSON() as unknown as StructuredContent
+    const wire: StructuredContent = app.toJSON()
+    return wire
   }
 }

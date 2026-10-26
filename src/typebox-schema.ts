@@ -21,6 +21,7 @@
 
 import { fromJsonSchema, type StandardSchemaWithJSON } from '@modelcontextprotocol/server'
 import type { TSchema, TProperties } from '@sinclair/typebox'
+import { isRecord, isSchema, stringList } from './guards.js'
 import { Type } from '@sinclair/typebox'
 import type { ToolMetadata } from './types.js'
 
@@ -46,12 +47,12 @@ const ELYSIA_COERCION_FORMATS = new Set(['numeric', 'integer', 'boolean', 'Array
  * Guarded on the string branch so a genuine format on another type is untouched.
  */
 function stripCoercionFormats(node: unknown): void {
-  if (node === null || typeof node !== 'object') return
   if (Array.isArray(node)) {
     for (const item of node) stripCoercionFormats(item)
     return
   }
-  const record = node as Record<string, unknown>
+  if (!isRecord(node)) return
+  const record = node
   if (
     record.type === 'string' &&
     typeof record.format === 'string' &&
@@ -64,7 +65,8 @@ function stripCoercionFormats(node: unknown): void {
 
 /** JSON roundtrip to strip TypeBox's Symbol metadata, then de-noise the result. */
 function toPlainJsonSchema(schema: unknown): Record<string, unknown> {
-  const jsonSchema = JSON.parse(JSON.stringify(schema)) as Record<string, unknown>
+  const jsonSchema: unknown = JSON.parse(JSON.stringify(schema))
+  if (!isRecord(jsonSchema)) throw new TypeError('A JSON Schema must be an object')
   stripCoercionFormats(jsonSchema)
   return jsonSchema
 }
@@ -131,6 +133,12 @@ export function typeboxToOutputSchema(schema: unknown): StandardSchemaWithJSON |
   }
 }
 
+function propertiesOf(schema: TSchema): TProperties {
+  const properties: unknown = schema.properties
+  if (!isRecord(properties)) return {}
+  return Object.fromEntries(Object.entries(properties).filter((entry): entry is [string, TSchema] => isSchema(entry[1])))
+}
+
 /**
  * Merge body and path-params TypeBox schemas into a single input schema.
  * Both are TypeBox t.Object() -- we combine their properties so MCP/OpenAI
@@ -143,11 +151,11 @@ export function getMergedInputSchema(meta: ToolMetadata): TSchema | undefined {
   if (!bodySchema) return paramsSchema
 
   // Both exist -- merge their properties
-  const bodyProps = (bodySchema as { properties?: TProperties }).properties ?? {}
-  const paramsProps = (paramsSchema as { properties?: TProperties }).properties ?? {}
+  const bodyProps = propertiesOf(bodySchema)
+  const paramsProps = propertiesOf(paramsSchema)
 
-  const bodyRequired = (bodySchema as { required?: readonly string[] }).required ?? []
-  const paramsRequired = (paramsSchema as { required?: readonly string[] }).required ?? []
+  const bodyRequired = stringList(bodySchema.required)
+  const paramsRequired = stringList(paramsSchema.required)
 
   // Path params take priority (they're always required)
   const mergedProps: TProperties = { ...bodyProps, ...paramsProps }

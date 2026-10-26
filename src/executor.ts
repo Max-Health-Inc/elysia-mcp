@@ -19,6 +19,7 @@ import type { ToolMetadata, ResourceMetadata } from './types.js'
 import { getMergedInputSchema } from './typebox-schema.js'
 import { pathToToolName } from './introspect.js'
 import { chooseToolText, type ToolTextFormat } from './text-format.js'
+import { isRecord } from './guards.js'
 
 /** Per-call execution options. */
 export interface ExecuteOptions {
@@ -330,9 +331,7 @@ export type StructuredContent = Record<string, unknown> | unknown[]
 function toStructuredContent(text: string): StructuredContent | undefined {
   try {
     const parsed: unknown = JSON.parse(text)
-    if (parsed !== null && typeof parsed === 'object') {
-      return parsed as StructuredContent
-    }
+    if (Array.isArray(parsed) || isRecord(parsed)) return parsed
   } catch {
     // Not JSON (or not parseable) — text content is the only representation.
   }

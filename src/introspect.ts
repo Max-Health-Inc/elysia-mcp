@@ -10,7 +10,7 @@
 
 import type { TSchema } from '@sinclair/typebox'
 import type { ToolMetadata, ResourceMetadata, ToolAnnotations } from './types.js'
-import { isRecord, nonEmptyText } from './guards.js'
+import { isRecord, isSchema, nonEmptyText } from './guards.js'
 import { readMcpOption, routeConfig, isRouteSelected, type McpRouteConfig, type McpRouteOption } from './route-option.js'
 
 // ── Configuration ────────────────────────────────────────────────────────────
@@ -51,25 +51,25 @@ const SUCCESS_STATUSES = ['200', '201', '202']
  * returned as `isError` text instead.
  */
 export function extractResponseSchema(response: unknown): TSchema | undefined {
-  if (response === null || typeof response !== 'object') return undefined
-  const entries = response as Record<string, unknown>
+  if (!isSchema(response)) return undefined
+  const entries = response
   const keys = Object.keys(entries)
   if (keys.length === 0) return undefined
 
   // A schema is itself an object, so the two shapes are told apart by their
   // keys: a status map is keyed entirely by status codes, a schema never is.
-  if (!keys.every((k) => /^\d{3}$/.test(k))) return response as TSchema
+  if (!keys.every((k) => /^\d{3}$/.test(k))) return response
 
   for (const status of SUCCESS_STATUSES) {
     const hit = entries[status]
-    if (hit && typeof hit === 'object') return hit as TSchema
+    if (isSchema(hit)) return hit
   }
   // Any other 2xx (204 carries no body worth advertising, so it is not sought
   // above, but a route using an unusual success code should still be covered).
   for (const key of keys) {
     if (key.startsWith('2') && key !== '204') {
       const hit = entries[key]
-      if (hit && typeof hit === 'object') return hit as TSchema
+      if (isSchema(hit)) return hit
     }
   }
   return undefined
@@ -95,10 +95,6 @@ interface RouteRecord {
   operationId?: string
   hidden: boolean
   public: boolean
-}
-
-function isSchema(value: unknown): value is TSchema {
-  return isRecord(value)
 }
 
 function readRoute(route: unknown): RouteRecord | undefined {

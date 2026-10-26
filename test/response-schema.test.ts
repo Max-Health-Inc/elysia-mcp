@@ -5,7 +5,7 @@ import { describe, expect, it } from 'bun:test'
 import { Elysia, t } from 'elysia'
 import { fromJsonSchema } from '@modelcontextprotocol/server'
 import { extractRouteTools, extractResponseSchema } from '../src/introspect'
-import { typeboxToOutputSchema } from '../src/typebox-schema'
+import { typeboxToJsonSchema, typeboxToOutputSchema } from '../src/typebox-schema'
 
 const Role = t.Object({ id: t.String(), name: t.String() })
 
@@ -39,6 +39,11 @@ describe('extractResponseSchema', () => {
 
   it('ignores 204, which carries no body', () => {
     expect(extractResponseSchema({ 204: t.Void(), ...CommonErrorResponses })).toBeUndefined()
+  })
+
+  it('does not take an array for a schema', () => {
+    expect(extractResponseSchema([Role])).toBeUndefined()
+    expect(extractResponseSchema({ 200: [Role] })).toBeUndefined()
   })
 
   it('tolerates a missing or malformed declaration', () => {
@@ -161,5 +166,12 @@ describe('typeboxToOutputSchema', () => {
     expect(typeboxToOutputSchema(undefined)).toBeUndefined()
     expect(typeboxToOutputSchema(null)).toBeUndefined()
     expect(typeboxToOutputSchema({})).toBeUndefined()
+  })
+})
+
+describe('typeboxToJsonSchema', () => {
+  it('returns undefined for a value that is not a schema object', () => {
+    expect(typeboxToJsonSchema(42)).toBeUndefined()
+    expect(typeboxToJsonSchema('object')).toBeUndefined()
   })
 })
