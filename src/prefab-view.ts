@@ -1,32 +1,7 @@
 // SPDX-FileCopyrightText: Max Health Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-/**
- * @maxhealth.tech/elysia-mcp/prefab - Schema-derived UIs for generated tools
- *
- * Every tool this package generates already carries what a UI needs: the route
- * declares its shape and the executor has the payload in hand. This turns that
- * into a view without a line of per-route UI code — a list renders as a table
- * and a record as a detail card.
- *
- * `toolForm` is the other half: the form a tool's own input schema describes,
- * whose submit action calls that same tool. The form and the validation it will
- * face come from one declaration, so they cannot drift.
- *
- * prefab is an OPTIONAL peer: importing this module is the opt-in. Nothing in
- * `@maxhealth.tech/elysia-mcp` itself reaches for it, so a server that serves
- * JSON and nothing else never installs it.
- *
- * @example
- * ```ts
- * import { prefabView } from '@maxhealth.tech/elysia-mcp/prefab'
- * import { registerViewerResource, PREFAB_RESOURCE_URI } from '@maxhealth.tech/prefab'
- *
- * registerViewerResource(server)
- * server.registerTool(name, { description, inputSchema, _meta: uiToolMeta() }, (args) =>
- *   executeTool(name, meta, args, token, app, { view: prefabView() }))
- * ```
- */
+/** Schema-derived prefab UIs for generated tools; prefab is an optional peer and importing this module is the opt-in. */
 
 import {
   PrefabApp,
@@ -42,34 +17,18 @@ import type { ToolMetadata } from './types.js'
 import type { StructuredContent, ToolView, ToolViewContext } from './executor.js'
 import { getMergedInputSchema, typeboxToJsonSchema } from './typebox-schema.js'
 
-// ── Tool _meta ───────────────────────────────────────────────────────────────
-
-/**
- * The `_meta` that points an MCP Apps host at the renderer resource.
- *
- * It belongs on the tool DEFINITION, not on a result: the host resolves the
- * `ui://` resource once, when it lists tools, and loads it into the sandboxed
- * iframe before any call is made.
- */
+/** Tool `_meta` pointing an MCP Apps host at the renderer; goes on the tool definition, since hosts resolve `ui://` at list time. */
 export function uiToolMeta(resourceUri: string = PREFAB_RESOURCE_URI): { ui: { resourceUri: string } } {
   return { ui: { resourceUri } }
 }
 
-// ── Titles ───────────────────────────────────────────────────────────────────
-
 /** Verb prefixes `pathToToolName` produces, stripped so a title reads as a noun. */
 const TOOL_VERBS = new Set(['create', 'update', 'delete', 'list', 'get', 'read', 'search'])
 
-/**
- * `list_admin_smart-apps` → `Admin smart apps`.
- *
- * The tool name is the only human-readable label a generated tool has, and it
- * was built from the route path, so it names the thing on screen.
- */
+/** `list_admin_smart-apps` → `Admin smart apps`. */
 export function titleFromToolName(toolName: string): string {
   const parts = toolName.split('_').filter(p => p.length > 0)
   const stripped = TOOL_VERBS.has(parts[0] ?? '') ? parts.slice(1) : parts
-  // A name that is only a verb (`search`) has nothing left to strip to.
   const words = stripped.length > 0 ? stripped : parts
   const text = words.join(' ').replace(/-/g, ' ')
   return text.length === 0 ? toolName : text.charAt(0).toUpperCase() + text.slice(1)
@@ -81,15 +40,11 @@ export function labelFromToolName(toolName: string): string {
   return text.length === 0 ? toolName : text.charAt(0).toUpperCase() + text.slice(1)
 }
 
-/** The verb a tool name starts with, when it starts with one. */
 function verbOf(toolName: string): string | undefined {
   const first = toolName.split('_')[0]
   return first !== undefined && TOOL_VERBS.has(first) ? first : undefined
 }
 
-// ── Payload shapes ───────────────────────────────────────────────────────────
-
-/** A record a detail view or a table row can be built from. */
 type Row = Record<string, unknown>
 
 function isRow(value: unknown): value is Row {
@@ -100,50 +55,22 @@ function isRowList(value: unknown): value is Row[] {
   return Array.isArray(value) && value.length > 0 && value.every(isRow)
 }
 
-/**
- * Find the list inside a wrapped list response.
- *
- * REST list endpoints answer in two shapes — a bare array, or an envelope
- * (`{ items: [...], total: 42 }`, `{ users: [...] }`) — and the envelope is the
- * one an auto-renderer would otherwise show as a detail card with one
- * unreadable cell. Only an envelope with exactly one array is unwrapped;
- * anything else is a record that happens to contain a list, and rendering one
- * of its arrays as THE table would be a guess.
- */
+/** Unwrap a list envelope (`{ items: [...], total }`) only when it holds exactly one row array. */
 function unwrapList(payload: Row): Row[] | undefined {
   const lists = Object.values(payload).filter(isRowList)
   return lists.length === 1 ? lists[0] : undefined
 }
 
-// ── Default view ─────────────────────────────────────────────────────────────
-
 export interface PrefabViewOptions {
-  /**
-   * Rows past this many are dropped before the table is built. A tool that
-   * answers with thousands of records would otherwise ship all of them into the
-   * iframe. @default 500
-   */
+  /** Rows kept in a table, so a huge list is not shipped into the iframe. @default 500 */
   maxRows?: number
-  /**
-   * Build the view for a tool. Return undefined to fall through to the default
-   * (table / detail card), which is what makes this an override for a few tools
-   * rather than an all-or-nothing replacement.
-   */
+  /** Per-tool override; return undefined to fall through to the default table or detail card. */
   render?: (payload: StructuredContent, context: ToolViewContext) => Component | PrefabApp | undefined
-  /**
-   * Called when a tool's payload has no view — the fallthrough is silent
-   * otherwise, and a payload shape nobody anticipated is worth knowing about.
-   */
+  /** Called when a payload gets no view, which is otherwise silent. */
   onSkipped?: (context: ToolViewContext) => void
 }
 
-/**
- * The view a payload gets when nothing more specific is asked for.
- *
- * A list becomes a table, a record becomes a detail card, and anything else
- * (a bare string, a number, an empty array) becomes nothing: a scalar reads
- * better as the text block it already is than as a card containing one word.
- */
+/** Default view: a list becomes a table, a record a detail card, anything else no view. */
 export function defaultView(
   payload: StructuredContent,
   context: ToolViewContext,
@@ -163,8 +90,6 @@ export function defaultView(
   return undefined
 }
 
-// ── toolForm() ───────────────────────────────────────────────────────────────
-
 export interface ToolFormOptions {
   /** Form heading. @default the humanized tool name */
   title?: string
@@ -172,25 +97,13 @@ export interface ToolFormOptions {
   submitLabel?: string
   /** Argument names to leave out entirely. */
   exclude?: string[]
-  /**
-   * Pre-filled values, keyed by argument name. This is how a form for a route
-   * that acts on one record (`/admin/users/:userId`) is bound to it: the path
-   * param is a required argument of the call, so it stays a field, and the
-   * caller supplies which record it is about.
-   */
+  /** Pre-filled values by argument name, e.g. the path param that binds a form to one record. */
   values?: Record<string, string | number | boolean | string[]>
 }
 
 /**
- * Build the form a tool's own input schema describes.
- *
- * The submit action calls that same tool, so what the form asks for and what
- * the call validates come from one declaration. Path params are included, not
- * dropped: they are required arguments of the call, and a form that omitted
- * them would submit something the tool rejects.
- *
- * Returns undefined when the schema describes nothing a flat form can ask for —
- * a tool taking no arguments, or only nested ones.
+ * Build the form a tool's input schema describes; submit calls that same tool, path params included.
+ * Returns undefined when there is nothing a flat form can ask for.
  */
 export function toolForm(
   toolName: string,
@@ -217,16 +130,7 @@ export function toolForm(
   })
 }
 
-// ── prefabView() ─────────────────────────────────────────────────────────────
-
-/**
- * A {@link ToolView} that renders tool payloads as prefab UIs.
- *
- * Pass it to `executeTool` as `options.view`. Tools it declines to render (a
- * scalar payload, an empty body) keep their JSON `structuredContent`, so
- * enabling it globally is safe — a tool either gains a UI or is left exactly as
- * it was.
- */
+/** A {@link ToolView} rendering payloads as prefab UIs; declined payloads keep their JSON `structuredContent`. */
 export function prefabView(options?: PrefabViewOptions): ToolView {
   return (payload, context) => {
     const built = options?.render?.(payload, context) ?? defaultView(payload, context, options)
