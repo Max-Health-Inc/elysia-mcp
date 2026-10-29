@@ -1,23 +1,7 @@
 // SPDX-FileCopyrightText: Max Health Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-/**
- * @maxhealth.tech/elysia-mcp - TypeBox to Standard Schema Bridge
- *
- * Converts TypeBox schemas (Elysia's type system) into the Standard Schema the
- * MCP SDK's `registerTool` takes, via the JSON Schema both sides already speak.
- *
- * TypeBox schemas ARE valid JSON Schema, carrying extra Symbol metadata that a
- * JSON roundtrip strips. So the conversion is a roundtrip and a handoff — there
- * is nothing to translate.
- *
- * This used to walk the properties itself, calling `z.fromJSONSchema` per field
- * and re-deriving `.optional()` from `required` and `.describe()` from
- * `description` — rebuilding, field by field, semantics the JSON Schema already
- * carried. It also produced a raw Zod shape, which is the DEPRECATED form of
- * `registerTool`'s `inputSchema` in SDK v2 and only worked because the SDK
- * auto-wraps it.
- */
+/** TypeBox schemas are JSON Schema plus Symbol metadata, so conversion is a JSON roundtrip handed to the SDK. */
 
 import { fromJsonSchema, type StandardSchemaWithJSON } from '@modelcontextprotocol/server'
 import type { TSchema, TProperties } from '@sinclair/typebox'
@@ -26,26 +10,12 @@ import { Type } from '@sinclair/typebox'
 import type { ToolMetadata } from './types.js'
 
 /**
- * `format` values Elysia emits as coercion hints rather than as JSON Schema
- * formats. `t.Integer()` compiles to
- * `anyOf: [{ type: 'string', format: 'integer' }, { type: 'integer' }]` so a
- * query string can carry a number; the format marks the branch to coerce.
- *
- * Ajv, which the SDK compiles advertised schemas with, does not know them and
- * logs `unknown format "integer" ignored` for every occurrence — once per
- * schema per registration, so a few hundred lines at boot on a surface this
- * size. It ignores the keyword anyway, which is what makes dropping it lossless
- * rather than a change of validation semantics.
- *
- * Only these four. `t.Date()` also yields string branches, but its `date` and
- * `date-time` are real JSON Schema formats that a client should keep.
+ * Elysia's coercion-hint formats (`t.Integer()` → `{ type: 'string', format: 'integer' }`); Ajv ignores them but logs
+ * a warning per occurrence, so dropping them is lossless. `date` and `date-time` are real formats and stay.
  */
 const ELYSIA_COERCION_FORMATS = new Set(['numeric', 'integer', 'boolean', 'ArrayString'])
 
-/**
- * Drop Elysia's coercion-hint formats, in place, from an already-cloned schema.
- * Guarded on the string branch so a genuine format on another type is untouched.
- */
+/** Drop coercion-hint formats in place, only on string branches. */
 function stripCoercionFormats(node: unknown): void {
   if (Array.isArray(node)) {
     for (const item of node) stripCoercionFormats(item)
@@ -71,14 +41,7 @@ function toPlainJsonSchema(schema: unknown): Record<string, unknown> {
   return jsonSchema
 }
 
-/**
- * Convert a TypeBox schema to plain JSON Schema.
- *
- * The same conversion `typeboxToSchema` performs before handing the result to
- * the SDK, exposed for consumers that need the JSON Schema itself rather than a
- * Standard Schema wrapper — deriving a form from a route's input schema, for
- * one. Returns undefined for anything unreadable.
- */
+/** Convert a TypeBox schema to plain JSON Schema, or undefined when unreadable. */
 export function typeboxToJsonSchema(schema: unknown): Record<string, unknown> | undefined {
   if (schema === null || schema === undefined) return undefined
   try {
@@ -88,12 +51,7 @@ export function typeboxToJsonSchema(schema: unknown): Record<string, unknown> | 
   }
 }
 
-/**
- * Convert a TypeBox schema to the Standard Schema `registerTool` expects.
- *
- * Returns undefined when the schema is not an object type or cannot be read, so
- * the caller registers the tool with no input schema rather than a broken one.
- */
+/** Convert a TypeBox schema to the `registerTool` input Standard Schema, or undefined unless it is a readable object type. */
 export function typeboxToSchema(schema: unknown): StandardSchemaWithJSON | undefined {
   try {
     const jsonSchema = toPlainJsonSchema(schema)
@@ -105,25 +63,14 @@ export function typeboxToSchema(schema: unknown): StandardSchemaWithJSON | undef
 }
 
 /**
- * Convert a TypeBox schema to the Standard Schema `registerTool` takes as its
- * `outputSchema`.
- *
- * Unlike an input schema, this does NOT require an object root. A list route
- * declares `200: t.Array(Role)`, and an array root is legal to advertise: the
- * SDK's `projectCallToolResult` reconciles it with the wire shape, wrapping the
- * value as `{result:…}` for a 2025-era client and passing it through on 2026.
- * Rejecting non-object roots here would drop exactly the list endpoints whose
- * responses are largest.
- *
- * Returns undefined for anything unreadable, so the tool registers without an
- * output schema rather than with a broken one.
+ * Convert a TypeBox schema to a `registerTool` `outputSchema`, or undefined when unreadable.
+ * Array roots are allowed: the SDK wraps them as `{result}` for 2025-era clients.
  */
 export function typeboxToOutputSchema(schema: unknown): StandardSchemaWithJSON | undefined {
   if (schema === null || schema === undefined) return undefined
   try {
     const jsonSchema = toPlainJsonSchema(schema)
-    // A schema with no `type` and no combinator carries nothing a client could
-    // validate against; advertising it would only invite a false rejection.
+    // Nothing to validate against; advertising it would invite false rejections.
     if (!jsonSchema.type && !jsonSchema.anyOf && !jsonSchema.oneOf && !jsonSchema.allOf && !jsonSchema.$ref) {
       return undefined
     }
@@ -139,32 +86,25 @@ function propertiesOf(schema: TSchema): TProperties {
   return Object.fromEntries(Object.entries(properties).filter((entry): entry is [string, TSchema] => isSchema(entry[1])))
 }
 
-/**
- * Merge body and path-params TypeBox schemas into a single input schema.
- * Both are TypeBox t.Object() -- we combine their properties so MCP/OpenAI
- * clients see a flat object with all required fields.
- */
+/** Merge body and path-params schemas into one flat input object. */
 export function getMergedInputSchema(meta: ToolMetadata): TSchema | undefined {
   const { schema: bodySchema, paramsSchema } = meta
   if (!bodySchema && !paramsSchema) return undefined
   if (!paramsSchema) return bodySchema
   if (!bodySchema) return paramsSchema
 
-  // Both exist -- merge their properties
   const bodyProps = propertiesOf(bodySchema)
   const paramsProps = propertiesOf(paramsSchema)
 
   const bodyRequired = stringList(bodySchema.required)
   const paramsRequired = stringList(paramsSchema.required)
 
-  // Path params take priority (they're always required)
+  // Path params win on a name clash
   const mergedProps: TProperties = { ...bodyProps, ...paramsProps }
 
   const merged = Type.Object(mergedProps, { additionalProperties: false })
 
-  // TypeBox rederives `required` from property optionality, which would drop
-  // whichever source's required list did not survive the spread. Replace it with
-  // the union of both, or omit it entirely when neither side required anything.
+  // TypeBox rederives `required`, losing one side's list; use the union instead.
   const allRequired = [...new Set([...paramsRequired, ...bodyRequired])]
   const { required: _rederived, ...withoutRequired } = merged
 
