@@ -11,6 +11,7 @@ on:
 # caller, and a repository whose default is `read` then fails at STARTUP with no log. This
 # repository's default happens to be `write`, but a default is not a contract.
 permissions:
+  actions: read
   contents: write
   packages: write
   id-token: write
