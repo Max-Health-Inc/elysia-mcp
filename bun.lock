@@ -9,7 +9,7 @@
       },
       "devDependencies": {
         "@eslint/js": "^10.0.1",
-        "@maxhealth.tech/prefab": "^0.3.21",
+        "@maxhealth.tech/prefab": "^0.3.22",
         "@modelcontextprotocol/server": "^2.4.0",
         "@sinclair/typebox": "^0.34.52",
         "@types/bun": "^1.4.4",
@@ -66,7 +66,7 @@
 
     "@keyv/serialize": ["@keyv/serialize@1.1.1", "", {}, "sha512-dXn3FZhPv0US+7dtJsIi2R+c7qWYiReoEh5zUntWCf4oSpMNib8FDhSoed6m3QyZdx5hK7iLFkYk3rNxwt8vTA=="],
 
-    "@maxhealth.tech/prefab": ["@maxhealth.tech/prefab@0.3.21", "", {}, "sha512-QpGDb/iQmtjK9QFTCfY7LURrLMiE3Yax5qhEq2yEwZo5AKjoEyo/5K73d8U5Wweh5jDGsBjnhRrqNzKzPRFu0A=="],
+    "@maxhealth.tech/prefab": ["@maxhealth.tech/prefab@0.3.22", "", {}, "sha512-jpg4iS+PBc04vVSrhJW0LUlkaauc33d1TfPd+jGXrp43M9PrrmnTf3FWYnb0R4BxTEJmfVboTV5K3pXFiQMHBg=="],
 
     "@modelcontextprotocol/core": ["@modelcontextprotocol/core@2.4.0", "", { "dependencies": { "zod": "^4.2.0" } }, "sha512-z8QBKqdfXLPzkLQuG4xp8hrVEMm1PZ1IgxMN2sMbJiFiAKOWXnAzogXn2W4aqIBlP1ea6U5yiqVquvUNM1Cj6Q=="],
 

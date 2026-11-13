@@ -83,7 +83,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@maxhealth.tech/prefab": "^0.3.21",
+    "@maxhealth.tech/prefab": "^0.3.22",
     "@modelcontextprotocol/server": "^2.4.0",
     "@sinclair/typebox": "^0.34.52",
     "@types/bun": "^1.4.4",
